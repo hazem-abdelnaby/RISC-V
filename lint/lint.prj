@@ -1,0 +1,42 @@
+#!SPYGLASS_PROJECT_FILE
+#!VERSION 3.0
+#  -------------------------------------------------------------------
+#  This is a software generated project file. Manual edits to this file could be lost during the next save operation
+#  Copyright Synopsys Inc.
+#  Last Updated By: SpyGlass SpyGlass_vL-2016.06
+#  Last Updated On Wed Nov 18 02:23:04 2026
+#
+#  -------------------------------------------------------------------
+
+##Data Import Section
+
+read_file -type verilog ../RTL/ALU.v
+read_file -type verilog ../RTL/Control_Unit.v
+read_file -type verilog ../RTL/Data_MEM.v
+read_file -type verilog ../RTL/Extend.v
+read_file -type verilog ../RTL/Instruction_MEM.v
+read_file -type verilog ../RTL/MUX2X1.v
+read_file -type verilog ../RTL/MUX4X1.v
+read_file -type verilog ../RTL/PC.v
+read_file -type verilog ../RTL/RegFile.v
+read_file -type verilog ../RTL/RISC_SC.v
+
+##Common Options Section
+
+set_option projectwdir .
+set_option language_mode mixed
+set_option designread_enable_synthesis no
+set_option designread_disable_flatten no
+set_option mthresh 16384
+set_option active_methodology $SPYGLASS_HOME/GuideWare/latest/block/rtl_handoff
+
+
+##Goal Setup Section
+
+current_methodology $SPYGLASS_HOME/GuideWare/latest/block/rtl_handoff
+
+
+current_goal lint/lint_rtl -alltop
+read_file -type awl ./spyglass-1/lint/lint_rtl/spyglass-1_waiver_file.awl
+set_goal_option default_waiver_file ./spyglass-1/lint/lint_rtl/spyglass-1_waiver_file.awl
+
