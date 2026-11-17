@@ -1,96 +1,186 @@
-32-bit Single-Cycle RISC-V Processor
-A 32-bit single-cycle RISC-V processor implemented in Verilog HDL. The design executes each instruction in a single clock cycle and includes instruction memory, data memory, a register file, an ALU, an immediate generator, and a control unit.
+# 32-bit Single-Cycle RISC-V Processor
 
-Architecture
-The top-level module, RISC_SC, integrates all processor components.
+## Project Overview
 
-Instruction Flow
-Fetch instruction using the Program Counter (PC)
-Decode instruction and generate control signals
-Read source registers and generate immediate value
-Execute ALU operation
-Access data memory (for LW/SW)
-Select write-back result
-Update PC
-Simplified Datapath
-PC → Instruction Memory → Control Unit
-              ↓
-         Register File
-              ↓
-           Extend
-              ↓
-             ALU
-              ↓
-         Data Memory
-              ↓
-          Write Back
-Implemented Modules
-Module	Description
-Control_Unit	Generates control signals from instruction fields.
-ALU	Implements ADD, SUB, AND, OR, and SLT operations.
-RegFile	32 × 32-bit register file with two read ports and one write port.
-PC	Stores and updates the program counter.
-Instruction_MEM	256 × 32-bit instruction memory.
-Data_MEM	256 × 32-bit data memory.
-Extend	Generates I, S, B, and J immediates.
-MUX2X1	Selects the second ALU operand.
-MUX4X1	Selects the write-back data source.
-RISC_SC	Top-level processor module.
-Supported Instructions
-Instruction	Description
-ADD	Register addition
-SUB	Register subtraction
-AND	Bitwise AND
-OR	Bitwise OR
-SLT	Signed set-less-than
-ADDI	Add immediate
-LW	Load word
-SW	Store word
-BEQ	Branch if equal
-JAL	Jump and link
-Note: The control unit does not fully decode I-type arithmetic Funct3. Only ADDI is implemented.
+This project implements a 32-bit single-cycle RISC-V processor in Verilog HDL. The design follows a single-cycle datapath, where each instruction is fetched, decoded, executed, and completed within one clock cycle.
 
-Design Specifications
-Feature	Value
-Datapath Width	32 bits
-Registers	32 × 32-bit
-Read Ports	2 asynchronous
-Write Port	1 synchronous
-Register x0	Constant zero
-Writes to x0	Blocked
-Instruction Memory	256 × 32 bits
-Data Memory	256 × 32 bits
-Addressing	memory[address[9:2]]
-Reset	Active-low asynchronous (where implemented)
-Simulation and Verification
-The supplied testbench (RISC_SC_tb) includes:
+The processor includes instruction memory, data memory, a register file, an ALU, immediate-generation logic, and a control unit. Control signals generated from the instruction opcode drive the datapath and determine how data moves through the processor during instruction execution.
 
-10 ns clock period
-Active-low reset sequence
-21 instructions loaded into instruction memory
-PC and instruction monitoring
-Register and memory checking
-VCD waveform generation
-Expected Results
-Signal	Expected Value
-PC	0x50
-x2	25
-x3	68
-x4	1
-x5	11
-x7	7
-x9	18
-memory[24]	7
-memory[25]	25
-The testbench reports PASS or FAIL based on these checks. No simulation results are claimed here.
+---
 
-Instruction Memory Initialization
-Instruction_MEM is implemented as a 256 × 32-bit array with combinational reads.
+## Architecture
 
-Instructions are loaded externally by the testbench using hierarchical assignments:
+### Top-Level Design
 
-dut.U5.memory[index] = instruction;
-The memory is not initialized inside the RTL. FPGA or synthesis implementations require a target-specific initialization method.
+The top-level module, `RISC_SC`, connects all processor components and implements the complete single-cycle datapath.
 
-Lint
-RTL linting is clean except for warnings related to uninitialized instruction-memory contents. This is expected in simulation because the testbench initializes instruction memory externally, but synthesis flows may require explicit initialization.
+Major blocks:
+
+- Program Counter (`PC`)
+- Instruction Memory (`Instruction_MEM`)
+- Control Unit (`Control_Unit`)
+- Register File (`RegFile`)
+- Immediate Generator (`Extend`)
+- Arithmetic Logic Unit (`ALU`)
+- Data Memory (`Data_MEM`)
+- Result Selection Multiplexer (`MUX4X1`)
+- ALU Source Multiplexer (`MUX2X1`)
+
+### Instruction Execution Flow
+
+1. Fetch instruction from instruction memory using the PC.
+2. Decode instruction and generate control signals.
+3. Read source registers and generate the immediate.
+4. Execute the ALU operation.
+5. Access data memory when required.
+6. Select the write-back result.
+7. Update the PC.
+
+### Simplified Datapath
+
+```text
+           +----------------+
+           |       PC       |
+           +-------+--------+
+                   |
+                   v
+         +-------------------+
+         | Instruction_MEM   |
+         +-------------------+
+                   |
+                   v
+          +-----------------+
+          | Control_Unit    |
+          +-----------------+
+                   |
+        +----------+----------+
+        |                     |
+        v                     v
+ +-------------+      +---------------+
+ |  RegFile    |      |    Extend     |
+ +-------------+      +---------------+
+        |                     |
+        +----------+----------+
+                   |
+                   v
+              +--------+
+              |  ALU   |
+              +--------+
+                   |
+          +--------+--------+
+          |                 |
+          v                 v
+     Data_MEM          Write-back
+          |                 |
+          +--------+--------+
+                   |
+                   v
+               RegFile
+```
+
+---
+
+## Implemented Modules
+
+| Module | Description |
+|----------|-------------|
+| `Control_Unit` | Decodes instruction opcodes and generates control signals. |
+| `ALU` | Performs ADD, SUB, AND, OR, and signed SLT operations. |
+| `RegFile` | Implements 32 general-purpose 32-bit registers with two asynchronous read ports and one synchronous write port. |
+| `PC` | Stores the current PC value and updates it with either `PC + 4` or a branch/jump target. |
+| `Instruction_MEM` | 256-word instruction memory with combinational read access. |
+| `Data_MEM` | 256-word data memory with combinational reads and synchronous writes. |
+| `Extend` | Generates sign-extended immediates for I-type, S-type, B-type, and J-type instructions. |
+| `MUX2X1` | Selects between register data and immediate data for the ALU input. |
+| `MUX4X1` | Selects the write-back source. |
+| `RISC_SC` | Top-level processor module integrating the complete datapath. |
+
+---
+
+## Supported Instructions
+
+| Instruction | Type | Description |
+|------------|------|-------------|
+| `ADD` | R-type | Adds two register operands. |
+| `SUB` | R-type | Subtracts the second operand from the first. |
+| `AND` | R-type | Bitwise AND operation. |
+| `OR` | R-type | Bitwise OR operation. |
+| `SLT` | R-type | Sets destination register to 1 if `rs1 < rs2` (signed). |
+| `ADDI` | I-type | Adds a sign-extended immediate to a register operand. |
+| `LW` | I-type | Loads a 32-bit word from data memory. |
+| `SW` | S-type | Stores a 32-bit word to data memory. |
+| `BEQ` | B-type | Branches when two source registers are equal. |
+| `JAL` | J-type | Jumps to a target and writes `PC + 4` to the destination register. |
+
+> **Note:** The current control unit does not fully decode the I-type arithmetic `Funct3` field. The implemented arithmetic immediate instruction should therefore be considered `ADDI` only.
+
+---
+
+## Design Specifications
+
+| Feature | Specification |
+|----------|--------------|
+| Datapath width | 32 bits |
+| Register count | 32 |
+| Register width | 32 bits |
+| Read ports | Two asynchronous read ports |
+| Write port | One synchronous write port |
+| Register `x0` | Always reads as zero |
+| Writes to `x0` | Blocked |
+| Instruction memory | 256 × 32 bits |
+| Data memory | 256 × 32 bits |
+| Memory indexing | Address bits `[9:2]` |
+| Reset type | Active-low asynchronous reset where implemented |
+
+---
+
+## Simulation and Verification
+
+The supplied testbench (`RISC_SC_tb`) includes:
+
+- 10 ns clock period
+- Active-low reset sequence
+- 21 instruction words loaded into instruction memory
+- PC and instruction monitoring
+- Register verification checks
+- Data memory verification checks
+- VCD waveform generation
+
+### Expected Verification Checks
+
+| Item | Expected Value |
+|--------|---------------|
+| PC | `0x50` |
+| x2 | `25` |
+| x3 | `68` |
+| x4 | `1` |
+| x5 | `11` |
+| x7 | `7` |
+| x9 | `18` |
+| memory[24] | `7` |
+| memory[25] | `25` |
+
+The testbench reports PASS or FAIL based on these checks. This README does not claim that simulation passed.
+
+---
+
+## Instruction Memory Initialization
+
+`Instruction_MEM` is modeled as a 256 × 32-bit memory array with combinational reads. The memory is not initialized inside the RTL module.
+
+The testbench loads instructions using hierarchical assignments to:
+
+```verilog
+dut.U5.memory[index]
+```
+
+A synthesis or FPGA implementation requires a memory initialization method supported by the target flow.
+
+---
+
+## Lint
+
+RTL lint checks are clean apart from warnings related to undriven instruction-memory contents. This is expected because the testbench initializes instruction memory externally. However, explicit memory initialization may still be required for synthesis.
+
+---
+
